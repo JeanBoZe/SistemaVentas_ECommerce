@@ -1,0 +1,5 @@
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaEntidad\bin\Debug\CapaEntidad.dll
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaEntidad\bin\Debug\CapaEntidad.pdb
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaEntidad\obj\Debug\CapaEntidad.csproj.CoreCompileInputs.cache
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaEntidad\obj\Debug\CapaEntidad.dll
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaEntidad\obj\Debug\CapaEntidad.pdb

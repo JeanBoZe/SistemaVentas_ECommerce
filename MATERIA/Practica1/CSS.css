@@ -1,0 +1,27 @@
+﻿html,body {
+    height: 100%;
+}
+.navbar {
+    min-height: 90px; /* Aumenta la altura de la barra */
+    display: flex;
+    align-items: center; /* Centra el contenido verticalmente */
+    padding: 10px 0; /* Añade espacio interno */
+    justify-content: center; /* Centra horizontalmente */
+}
+
+.navbar-brand img {
+    height: 70px; /* Ajusta el tamaño del logo */
+    width: auto; /* Mantiene la proporción */
+}
+
+.navbar-nav > li > a {
+    line-height: 80px; /* Centra los enlaces verticalmente */
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.navbar-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
