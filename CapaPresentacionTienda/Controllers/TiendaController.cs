@@ -4,7 +4,7 @@ using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 using System.IO;
-
+using System.Threading.Tasks;
 using CapaEntidad;
 using CapaNegocio;
 
@@ -247,6 +247,76 @@ namespace CapaPresentacionTienda.Controllers
                 base64String = null;
             }
             return base64String;
+        }
+
+        [HttpPost]
+        public async Task<JsonResult> ProcesarPago(List<Carrito> oListaCarrito, Venta oVenta)
+        {
+            if (Session["Cliente"] == null)
+                return Json(new { Status = false, Mensaje = "Inicie sesión para continuar" });
+
+            int idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
+
+            // 1. Registrar la Venta en Base de Datos (Estado Pendiente)
+            // Deberías tener un método en CN_Venta que guarde la venta y te devuelva el ID y el Total real.
+            // Aquí simulo el registro para enfocarnos en PayPal:
+
+            // --> LOGICA DE REGISTRO DE VENTA AQUÍ (CN_Venta.Registrar...)
+            // Supongamos que guardaste la venta y obtuviste estos datos:
+            string idTransaccion = "V" + DateTime.Now.ToString("yyyyMMddHHmmss"); // ID Único de tu BD
+            decimal totalVenta = 0;
+
+            // Calculamos el total en el servidor (POR SEGURIDAD, nunca confíes en el JS)
+            List<Carrito> listaReal = new CN_Carrito().ListarProducto(idcliente);
+            foreach (var item in listaReal)
+            {
+                totalVenta += item.oProducto.PROD_PRECIO * item.CARRITO_CANTIDAD;
+            }
+
+            // 2. Comunicarse con PayPal
+            CN_Paypal opaypal = new CN_Paypal();
+            string totalString = totalVenta.ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
+
+            string respuestaPaypal = await opaypal.CrearOrden(totalString, "MXN", "Compra Tienda", idTransaccion);
+
+            // LOGICA NUEVA:
+            // Si la respuesta empieza con "http", es una URL válida (Éxito)
+            if (respuestaPaypal.StartsWith("http"))
+            {
+                return Json(new { Status = true, Link = respuestaPaypal });
+            }
+            else
+            {
+                // Si no es URL, es el mensaje de error que capturamos en el paso 1
+                return Json(new { Status = false, Mensaje = respuestaPaypal });
+            }
+        }
+
+        // Método donde regresa PayPal después de pagar
+        public ActionResult PagoEfectuado()
+        {
+            // 1. Obtener el token de la URL
+            string token = Request.QueryString["token"];
+            string payerId = Request.QueryString["PayerID"];
+
+            // 2. Pasamos el ID a la vista por si quieres mostrarlo
+            ViewBag.IdTransaccion = token;
+
+            // 3. AQUÍ ESTABA EL ERROR: 
+            // Necesitamos definir "Status" para que la vista sepa qué mostrar.
+
+            // Validación básica: Si hay un token, asumimos que el pago fue correcto.
+            if (!string.IsNullOrEmpty(token))
+            {
+                ViewData["Status"] = true;
+            }
+            else
+            {
+                // Si alguien entra directo a la página sin pagar, Status es false
+                ViewData["Status"] = false;
+            }
+
+            return View();
         }
     }
 }

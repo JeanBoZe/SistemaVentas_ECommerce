@@ -2,8 +2,10 @@ D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaN
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaNegocio.pdb
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaDatos.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaEntidad.dll
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\Newtonsoft.Json.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaDatos.pdb
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\CapaEntidad.pdb
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\bin\Debug\Newtonsoft.Json.xml
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\obj\Debug\CapaNegocio.csproj.AssemblyReference.cache
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\obj\Debug\CapaNegocio.csproj.CoreCompileInputs.cache
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaNegocio\obj\Debug\CapaNegocio.csproj.CopyComplete

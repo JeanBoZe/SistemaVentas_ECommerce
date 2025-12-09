@@ -10,7 +10,7 @@
         <br /><br />
 
         @{
-            if ((bool)ViewData["Status"])
+            if (ViewData["Status"] != null && (bool)ViewData["Status"] == true)
             {
                 <h1 class="text-success">Gracias!!</h1>
                 <i class="far fa-check-circle fa-9px text-success"></i>

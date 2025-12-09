@@ -97,15 +97,15 @@
                                         </div>
                                         <div class="mb-2">
                                             <label for="exampleInputEmail" class="form-label">Nombre Contacto: </label>
-                                            <input type="text" class="form-control form-control-sm" id="txtnombrecontacto" autocomplete="off"></input>
+                                            <input type="text" class="form-control form-control-sm" id="txtnombrecontacto" autocomplete="off"/>
                                         </div>
                                         <div class="mb-2">
                                             <label for="exampleInputEmail" class="form-label">Direccion: </label>
-                                            <input type="text" class="form-control form-control-sm" id="txtdireccion" autocomplete="off"></input>
+                                            <input type="text" class="form-control form-control-sm" id="txtdireccion" autocomplete="off"/>
                                         </div>
                                         <div class="mb-2">
                                             <label for="txttelefono" class="form-label">Telefono: </label>
-                                            <input type="text" class="form-control form-control-sm" id="txttelefono" autocomplete="off"></input>
+                                            <input type="text" class="form-control form-control-sm" id="txttelefono" autocomplete="off"/>
                                         </div>
                                         <div class="d-grid">
                                             <button class="btn btn-success" type="button" onclick="RealizarPago()">
@@ -368,20 +368,81 @@
                 });
             });
 
-            // FUNCIÓN PARA PAGAR
+            // FUNCIÓN PARA PAGAR CON RASTREO
             window.RealizarPago = function() {
-                // Aquí va tu lógica de RealizarPago (validaciones de campos vacíos, etc.)
-                if (parseInt($("#total").data("sumatotal")) == 0) {
-                     swal("", "No hay productos en el carrito", "warning");
-                     return;
+                console.log("PASO 1: Botón presionado. Entrando a la función.");
+
+                // 1. Validar Total
+                var total = parseFloat($("#total").data("sumatotal"));
+                console.log("PASO 2: El total es: " + total);
+
+                if (total == 0) {
+                        console.log("ERROR: El carrito está vacío. Se detiene aquí.");
+                        swal("", "No hay productos en el carrito", "warning");
+                        return;
                 }
 
-                if ($("#cbodistrito").val() == "" || $("#txtnombrecontacto").val() == "" || $("#txtdireccion").val() == "" || $("#txttelefono").val() == "") {
+                // 2. Validar Campos
+                var distrito = $("#cbodistrito").val();
+                var contacto = $("#txtnombrecontacto").val();
+                var direccion = $("#txtdireccion").val();
+                var telefono = $("#txttelefono").val();
+
+                console.log("PASO 3: Datos -> Dist: " + distrito + ", Cont: " + contacto + ", Dir: " + direccion + ", Tel: " + telefono);
+
+                if (distrito == null || distrito == "" || contacto == "" || direccion == "" || telefono == "") {
+                    console.log("ERROR: Falta algún campo. Se detiene aquí.");
                     swal("", "Debe completar los datos de envío", "warning");
                     return;
                 }
 
-                // ... resto de tu lógica de pago ...
+                console.log("PASO 4: Todo validado. Preparando envío al servidor...");
+
+                var venta = {
+                    VEN_TOTALPRODUCTO: $("input.input-cantidad").length,
+                    VEN_MONTOTOTAL: 0,
+                    VEN_CONTACTO: contacto,
+                    VEN_IDDISTRITO: distrito,
+                    VEN_TELEFONO: telefono,
+                    VEN_DIRECCION: direccion
+                }
+
+                var lista_carrito = [];
+
+                $("input.input-cantidad").each(function(i){
+                    var producto = $(this).data("oProducto");
+                    var cantidad = parseFloat($(this).val());
+                    lista_carrito.push({
+                        oProducto: producto,
+                        CARRITO_CANTIDAD: cantidad
+                    })
+                })
+
+                console.log("PASO 5: Enviando AJAX a ProcesarPago...");
+
+                jQuery.ajax({
+                    url: '@Url.Action("ProcesarPago","Tienda")',
+                    type: "POST",
+                    data: JSON.stringify({ oListaCarrito: lista_carrito, oVenta: venta }),
+                    dataType: "json",
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {
+                        console.log("PASO 6: El servidor respondió."); // <--- Si ves esto, SÍ llegó al C#
+                        $.LoadingOverlay("hide");
+                        if (data.Status) {
+                            console.log("EXITO: Redirigiendo a: " + data.Link);
+                            window.location.href = data.Link;
+                        } else {
+                            console.log("FALLO SERVER: " + data.Mensaje);
+                            swal("", "Vuelva a intentarlo más tarde", "warning");
+                        }
+                    },
+                    beforeSend: function () { $.LoadingOverlay("show"); },
+                    error: function (error) {
+                        console.log("ERROR AJAX: ", error); // <--- Aquí verás si hay error 404 o 500
+                        $.LoadingOverlay("hide");
+                    }
+                });
             }
         });
     </script>
