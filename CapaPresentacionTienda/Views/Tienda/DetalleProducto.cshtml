@@ -2,40 +2,103 @@
 @{
     ViewBag.Title = "DetalleProducto";
     Layout = "~/Views/Shared/_Layout.cshtml";
+
+    // --- LÓGICA PARA CALCULAR PROMEDIO ---
+    double promedio = 0;
+    int totalComentarios = 0;
+
+    if (Model.oListaComentarios != null && Model.oListaComentarios.Count > 0)
+    {
+        // Promedio matemático (ej: 4.3)
+        promedio = Model.oListaComentarios.Average(c => c.COM_PUNTUACION);
+        totalComentarios = Model.oListaComentarios.Count;
+    }
+
+    // Redondear a 1 decimal para mostrar (ej: 4.3)
+    promedio = Math.Round(promedio, 1);
+
+    // Calcular estrellas llenas (ej: 4)
+    int estrellasLlenas = (int)promedio;
+
+    // Calcular si lleva media estrella (si el decimal es .5 o mayor)
+    bool mediaEstrella = (promedio - estrellasLlenas) >= 0.5;
 }
 
 <section class="py-5">
     <div class="container px-4 px-lg-5 my-5">
         <div class="row gx-4 gx-lg-5 align-items-center">
 
-            <div class="col-md-6">
-                <img class="card-img-top mb-5 mb-md-0" src="data:image/@Html.DisplayTextFor(m => m.Extension);base64,@Html.DisplayTextFor(m => m.Base64)" alt="..." />
+            <div class="col-md-6 text-center">
+                <img class="card-img-top mb-5 mb-md-0"
+                     src="data:image/@Html.DisplayTextFor(m => m.Extension);base64,@Html.DisplayTextFor(m => m.Base64)"
+                     alt="@Html.DisplayTextFor(m => m.PROD_NOMBRE)"
+                     style="max-height: 450px; width: auto; object-fit: contain;" />
             </div>
 
             <div class="col-md-6">
                 <div class="small mb-1">@Html.DisplayTextFor(m => m.oMarca.MAR_DESCRIPCION)</div>
                 <h1 class="display-5 fw-bolder">@Html.DisplayTextFor(m => m.PROD_NOMBRE)</h1>
 
-                <div class="fs-5 mb-5">
-                    <span>@Html.DisplayTextFor(m => m.PROD_PRECIO) MXN</span>
+                <div class="mb-3">
+                    <div class="small text-warning d-flex align-items-center">
+
+                        @if (totalComentarios > 0)
+                        {
+                            // Bucle del 1 al 5 para pintar las estrellas
+                            for (int i = 1; i <= 5; i++)
+                            {
+                                if (i <= estrellasLlenas)
+                                {
+                                    // Estrella Llena
+                                    <i class="fas fa-star"></i>
+                                }
+                                else if (i == estrellasLlenas + 1 && mediaEstrella)
+                                {
+                                    // Media Estrella (si tienes FontAwesome 5+)
+                                    <i class="fas fa-star-half-alt"></i>
+                                }
+                                else
+                                {
+                                    // Estrella Vacía
+                                    <i class="far fa-star"></i>
+                                }
+                            }
+                            // Texto del promedio
+                            <span class="ms-2 text-muted">(@promedio) basado en @totalComentarios reseñas</span>
+                        }
+                        else
+                        {
+                            // Si no hay comentarios
+                            <i class="far fa-star text-muted"></i>
+                            <i class="far fa-star text-muted"></i>
+                            <i class="far fa-star text-muted"></i>
+                            <i class="far fa-star text-muted"></i>
+                            <i class="far fa-star text-muted"></i>
+                            <span class="ms-2 text-muted">Sin calificaciones aún</span>
+                        }
+                    </div>
                 </div>
+                <div class="fs-5 mb-5">
+                    <div class="fs-5 mb-5">
+                        <span>$@Html.DisplayTextFor(m => m.PROD_PRECIO) MXN</span>
+                    </div>
 
-                <p class="lead">@Html.DisplayTextFor(m => m.PROD_DESCRIPCION)</p>
+                    <p class="lead">@Html.DisplayTextFor(m => m.PROD_DESCRIPCION)</p>
 
-                <div class="d-flex">
-                    <a href="@Url.Action("Index","Tienda")" class="btn btn-danger w-50 text-center me-3">
-                        <i class="fas fa-undo-alt"></i> Volver
-                    </a>
+                    <div class="d-flex">
+                        <a href="@Url.Action("Index","Tienda")" class="btn btn-danger w-50 text-center me-3">
+                            <i class="fas fa-undo-alt"></i> Volver
+                        </a>
 
-                    @if (Session["Cliente"] != null)
-                    {
-                        <button class="btn btn-success agregarcarrito flex-shink-0 w-50" type="button" data-idproducto="@Html.DisplayTextFor(m => m.PROD_ID)">
-                            <i class="fas fa-cart-plus"></i> Agregar al carrito
-                        </button>
-                    }
+                        @if (Session["Cliente"] != null)
+                        {
+                            <button class="btn btn-success agregarcarrito flex-shink-0 w-50" type="button" data-idproducto="@Html.DisplayTextFor(m => m.PROD_ID)">
+                                <i class="fas fa-cart-plus"></i> Agregar al carrito
+                            </button>
+                        }
+                    </div>
                 </div>
             </div>
-        </div>
     </div>
 </section>
 
@@ -126,84 +189,74 @@
 
 @section scripts{
     <script>
-        // ============================================
-        // A. TU LÓGICA ORIGINAL DEL CARRITO
-        // ============================================
-        $(document).on("click", "button.agregarcarrito", function () {
-            console.log($(this).data("idproducto"))
-            jQuery.ajax({
-                url: '@Url.Action("AgregarCarrito","Tienda")',
-                type: "POST",
-                data: JSON.stringify({ idproducto: $(this).data("idproducto")}),
-                dataType: "json",
-                contentType: "application/json; charset=utf-8",
-                success: function (data) {
-                    if (data.respuesta) {
-                        MostrarCantidadCarrito();
-                        swal("", "Agregado al carrito", "success");
+        $(document).ready(function () {
+
+            // 1. LIMPIEZA DE EVENTOS (Para evitar conflictos anteriores)
+            $(document).off("mouseenter mouseleave click", ".star-rating");
+            $(document).off("mouseleave", "#contenedor-estrellas");
+
+            // Variable para guardar la calificación
+            var calificacionFija = 0;
+
+            // =========================================================
+            // LÓGICA SOLO CLICK (Sin Hover)
+            // =========================================================
+
+            // Eliminamos los eventos "mouseenter" y "mouseleave" para que no parpadeen
+
+            $(document).on("click", ".star-rating", function () {
+                // 1. Guardamos el valor de la estrella clickeada
+                calificacionFija = parseInt($(this).data("value"));
+
+                // 2. Lo enviamos al input oculto
+                $("#puntuacionInput").val(calificacionFija);
+
+                // 3. Actualizamos el texto
+                $("#texto-calificacion").text(calificacionFija + "/5");
+
+                // 4. Pintamos las estrellas permanentemente
+                pintarEstrellas(calificacionFija);
+
+                // Pequeña animación visual
+                $(this).fadeOut(100).fadeIn(100);
+            });
+
+            // FUNCIÓN DE PINTADO
+            function pintarEstrellas(cantidad) {
+                $(".star-rating").each(function () {
+                    var estrella = $(this);
+                    var valorEstrella = parseInt(estrella.data("value"));
+
+                    // Limpiamos clases
+                    estrella.removeClass("fas far text-warning");
+
+                    if (valorEstrella <= cantidad) {
+                        // Si es menor o igual a lo que clickeaste: PINTADA
+                        estrella.addClass("fas text-warning");
                     } else {
-                        swal("", data.mensaje, "warning");
-                    }
-                }
-            })
-        });
-
-        // ============================================
-        // B. NUEVA LÓGICA DE COMENTARIOS Y ESTRELLAS
-        // ============================================
-        $(document).ready(function() {
-
-            var calificacionSeleccionada = 0;
-
-            // 1. Efecto Hover (pasar el mouse)
-            $(".star-rating").on("mouseenter", function() {
-                var val = $(this).data("value");
-                pintarEstrellas(val);
-            });
-
-            // 2. Efecto Mouse Leave (quitar el mouse)
-            $("#contenedor-estrellas").on("mouseleave", function() {
-                pintarEstrellas(calificacionSeleccionada);
-            });
-
-            // 3. Efecto Click (Guardar calificación)
-            $(".star-rating").on("click", function() {
-                calificacionSeleccionada = $(this).data("value");
-                $("#puntuacionInput").val(calificacionSeleccionada); // Guardar en input hidden
-                $("#texto-calificacion").text(calificacionSeleccionada + "/5"); // Mostrar texto
-                pintarEstrellas(calificacionSeleccionada);
-            });
-
-            // Función auxiliar para pintar
-            function pintarEstrellas(valor) {
-                $(".star-rating").each(function() {
-                    var estrellaVal = $(this).data("value");
-                    if (estrellaVal <= valor) {
-                        $(this).removeClass("far").addClass("fas"); // Llena
-                    } else {
-                        $(this).removeClass("fas").addClass("far"); // Vacía
+                        // Si es mayor: VACÍA
+                        estrella.addClass("far text-warning");
                     }
                 });
             }
 
-            // 4. Enviar Comentario al Servidor (AJAX)
-            $("#btnEnviarComentario").on("click", function() {
-
+            // =========================================================
+            // BOTÓN ENVIAR (Igual que antes)
+            // =========================================================
+            $("#btnEnviarComentario").on("click", function () {
                 var comentario = $("#txtComentario").val();
                 var puntuacion = $("#puntuacionInput").val();
-                var idProd = '@Html.DisplayTextFor(m => m.PROD_ID)'; // ID del producto actual
+                var idProd = '@Html.DisplayTextFor(m => m.PROD_ID)';
 
-                // Validaciones
-                if(puntuacion == 0) {
-                    swal("Falta información", "Por favor selecciona una calificación de estrellas", "warning");
+                if (puntuacion == 0) {
+                    swal("Falta información", "Selecciona las estrellas para calificar", "warning");
                     return;
                 }
-                if(comentario.trim() == "") {
-                    swal("Falta información", "Por favor escribe un comentario", "warning");
+                if (comentario.trim() == "") {
+                    swal("Falta información", "Escribe un comentario", "warning");
                     return;
                 }
 
-                // Llamada AJAX al Controller
                 jQuery.ajax({
                     url: '@Url.Action("GuardarComentario", "Tienda")',
                     type: "POST",
@@ -212,23 +265,36 @@
                     contentType: "application/json; charset=utf-8",
                     success: function (data) {
                         if (data.resultado) {
-                            swal("¡Éxito!", "Tu reseña ha sido publicada", "success");
-
-                            // Recargar la página después de 1.5 segundos para ver el comentario nuevo
-                            setTimeout(function(){
-                                location.reload();
-                            }, 1500);
-
+                            swal("¡Éxito!", "Tu reseña se ha publicado", "success");
+                            setTimeout(function () { location.reload(); }, 1500);
                         } else {
                             swal("Error", data.mensaje, "error");
                         }
-                    },
-                    error: function(error) {
-                        swal("Error", "Ocurrió un error al procesar la solicitud", "error");
                     }
                 });
             });
 
-        }); // Fin document.ready
+            // =========================================================
+            // CARRITO (Igual que antes)
+            // =========================================================
+            $(document).on("click", "button.agregarcarrito", function () {
+                jQuery.ajax({
+                    url: '@Url.Action("AgregarCarrito", "Tienda")',
+                    type: "POST",
+                    data: JSON.stringify({ idproducto: $(this).data("idproducto") }),
+                    dataType: "json",
+                    contentType: "application/json; charset=utf-8",
+                    success: function (data) {
+                        if (data.respuesta) {
+                            MostrarCantidadCarrito();
+                            swal("", "Agregado al carrito", "success");
+                        } else {
+                            swal("", data.mensaje, "warning");
+                        }
+                    }
+                });
+            });
+
+        });
     </script>
 }

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
-using System.IO; // Necesario para manejar rutas de archivos
+using System.IO;
 
 using CapaEntidad;
 using CapaNegocio;
@@ -13,16 +13,18 @@ namespace CapaPresentacionTienda.Controllers
     public class TiendaController : Controller
     {
         // ============================================
-        // 1. VISTA PRINCIPAL (CATÁLOGO)
+        // 1. VISTAS PRINCIPALES
         // ============================================
         public ActionResult Index()
         {
             return View();
         }
 
-        // ============================================
-        // 2. VISTA DETALLE (CON IMAGEN Y COMENTARIOS)
-        // ============================================
+        public ActionResult Carrito()
+        {
+            return View();
+        }
+
         public ActionResult DetalleProducto(int idproducto = 0)
         {
             if (idproducto == 0) return RedirectToAction("Index");
@@ -31,22 +33,11 @@ namespace CapaPresentacionTienda.Controllers
 
             if (oProducto != null)
             {
+                // Cargar Comentarios
                 oProducto.oListaComentarios = new CN_Comentario().Listar(idproducto);
 
-                // LÓGICA DE IMAGEN CORREGIDA
-                bool conversion;
-                string rutaImagen = "";
-
-                if (!string.IsNullOrEmpty(oProducto.PROD_IMAGEN))
-                {
-                    rutaImagen = Path.Combine(oProducto.PROD_IMAGEN, oProducto.PROD_NOMBREIMAGEN);
-                }
-                else
-                {
-                    rutaImagen = ObtenerRutaImagen(oProducto.PROD_NOMBREIMAGEN);
-                }
-
-                oProducto.Base64 = CN_Recursos.ConvertirBase64(rutaImagen, out conversion);
+                // Cargar Imagen: Priorizamos la ruta que viene de la BD
+                oProducto.Base64 = ConvertirImagenABase64(oProducto.PROD_IMAGEN, oProducto.PROD_NOMBREIMAGEN);
                 oProducto.Extension = Path.GetExtension(oProducto.PROD_NOMBREIMAGEN).Replace(".", "");
             }
 
@@ -54,8 +45,32 @@ namespace CapaPresentacionTienda.Controllers
         }
 
         // ============================================
-        // 3. MÉTODOS PARA FILTROS (RESTAURADOS)
+        // 2. CATÁLOGO Y FILTROS
         // ============================================
+        [HttpPost]
+        public JsonResult ListarProducto(int idcategoria, int idmarca)
+        {
+            List<Producto> lista = new CN_Producto().Listar();
+
+            if (idcategoria > 0)
+                lista = lista.Where(p => p.oCategoria.CAT_ID == idcategoria).ToList();
+
+            if (idmarca > 0)
+                lista = lista.Where(p => p.oMarca.MAR_ID == idmarca).ToList();
+
+            foreach (Producto item in lista)
+            {
+                // Pasamos la ruta de la BD (PROD_IMAGEN) para que la use si existe
+                item.Base64 = ConvertirImagenABase64(item.PROD_IMAGEN, item.PROD_NOMBREIMAGEN);
+                item.Extension = Path.GetExtension(item.PROD_NOMBREIMAGEN).Replace(".", "");
+            }
+
+            var jsonResult = Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            jsonResult.MaxJsonLength = int.MaxValue;
+
+            return jsonResult;
+        }
+
         [HttpGet]
         public JsonResult ListaCategorias()
         {
@@ -63,7 +78,6 @@ namespace CapaPresentacionTienda.Controllers
             return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
         }
 
-        // ¡ESTE ES EL QUE FALTABA Y DABA ERROR 404!
         [HttpPost]
         public JsonResult ListaMarcasPorCategoria(int idcategoria)
         {
@@ -72,103 +86,115 @@ namespace CapaPresentacionTienda.Controllers
         }
 
         // ============================================
-        // 4. LISTAR PRODUCTOS (CONVERTIR IMÁGENES)
-        // ============================================
-        [HttpPost]
-        public JsonResult ListarProducto(int idcategoria, int idmarca)
-        {
-            List<Producto> lista = new CN_Producto().Listar();
-
-            // Filtros
-            if (idcategoria > 0)
-                lista = lista.Where(p => p.oCategoria.CAT_ID == idcategoria).ToList();
-
-            if (idmarca > 0)
-                lista = lista.Where(p => p.oMarca.MAR_ID == idmarca).ToList();
-
-            // Dentro de [HttpPost] ListarProducto...
-
-            // ... filtros de categoria y marca (igual que antes) ...
-
-            foreach (Producto item in lista)
-            {
-                bool conversion;
-                string rutaImagen = "";
-
-                try
-                {
-                    // ESTRATEGIA: Usar la ruta que ya viene de la base de datos
-                    // Tu captura muestra que PROD_IMAGEN ya tiene "D:\Universidad\...\Images_Producto"
-                    if (!string.IsNullOrEmpty(item.PROD_IMAGEN))
-                    {
-                        rutaImagen = Path.Combine(item.PROD_IMAGEN, item.PROD_NOMBREIMAGEN);
-                    }
-                    else
-                    {
-                        // Si la BD no trae ruta, usamos el cálculo manual como respaldo
-                        rutaImagen = ObtenerRutaImagen(item.PROD_NOMBREIMAGEN);
-                    }
-
-                    // TRUCO DE DEBUG: 
-                    // Si la imagen sale rota, la "Descripción" del producto te dirá qué ruta intentó leer.
-                    // (Borra esta línea cuando ya funcionen las imágenes)
-                    // item.PROD_DESCRIPCION = "Ruta: " + rutaImagen; 
-
-                    // Conversión usando tu clase CN_Recursos
-                    item.Base64 = CN_Recursos.ConvertirBase64(rutaImagen, out conversion);
-                    item.Extension = Path.GetExtension(item.PROD_NOMBREIMAGEN).Replace(".", "");
-                }
-                catch
-                {
-                    continue;
-                }
-            }
-
-            // ... retorno del Json (igual que antes) ...
-
-            var jsonResult = Json(new { data = lista }, JsonRequestBehavior.AllowGet);
-            jsonResult.MaxJsonLength = int.MaxValue; // Permite enviar muchas fotos
-
-            return jsonResult;
-        }
-
-        // ============================================
-        // 5. HELPER PARA CARPETA EXTERNA
-        // ============================================
-        private string ObtenerRutaImagen(string nombreImagen)
-        {
-            if (string.IsNullOrEmpty(nombreImagen)) return "";
-
-            // Buscamos la carpeta "Images_Producto" que está FUERA del proyecto web
-            string rutaTienda = Server.MapPath("~");
-            string rutaSolucion = Directory.GetParent(rutaTienda).FullName;
-            return Path.Combine(rutaSolucion, "Images_Producto", nombreImagen);
-        }
-
-        // ============================================
-        // 6. CARRITO Y COMENTARIOS
+        // 3. CARRITO DE COMPRAS (Corregido)
         // ============================================
         [HttpPost]
         public JsonResult AgregarCarrito(int idproducto)
         {
-            if (Session["Cliente"] == null) return Json(new { respuesta = false, mensaje = "Inicia sesión" });
+            if (Session["Cliente"] == null)
+                return Json(new { respuesta = false, mensaje = "Inicia sesión para comprar" });
 
             int idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
             bool existe = new CN_Carrito().ExisteCarrito(idcliente, idproducto);
             bool respuesta = false;
             string mensaje = string.Empty;
 
-            if (existe) mensaje = "El producto ya existe en el carrito";
-            else respuesta = new CN_Carrito().OperacionCarrito(idcliente, idproducto, true, out mensaje);
+            if (existe)
+            {
+                mensaje = "El producto ya existe en el carrito";
+            }
+            else
+            {
+                respuesta = new CN_Carrito().OperacionCarrito(idcliente, idproducto, true, out mensaje);
+            }
+
+            return Json(new { respuesta = respuesta, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        public JsonResult CantidadEnCarrito()
+        {
+            int idcliente = 0;
+            if (Session["Cliente"] != null)
+            {
+                idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
+            }
+
+            int cantidad = new CN_Carrito().CantidadEnCarrito(idcliente);
+            return Json(new { cantidad = cantidad }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult ListarProductosCarrito()
+        {
+            int idcliente = 0;
+            if (Session["Cliente"] != null)
+            {
+                idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
+            }
+
+            List<Carrito> oLista = new CN_Carrito().ListarProducto(idcliente);
+
+            foreach (Carrito item in oLista)
+            {
+                // Convertir imágenes también en el carrito
+                item.oProducto.Base64 = ConvertirImagenABase64(item.oProducto.PROD_IMAGEN, item.oProducto.PROD_NOMBREIMAGEN);
+                item.oProducto.Extension = Path.GetExtension(item.oProducto.PROD_NOMBREIMAGEN).Replace(".", "");
+            }
+
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult OperacionCarrito(int idproducto, bool sumar)
+        {
+            int idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
+            bool respuesta = false;
+            string mensaje = string.Empty;
+
+            respuesta = new CN_Carrito().OperacionCarrito(idcliente, idproducto, sumar, out mensaje);
 
             return Json(new { respuesta = respuesta, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
         }
 
         [HttpPost]
+        public JsonResult EliminarCarrito(int idproducto)
+        {
+            int idcliente = ((Cliente)Session["Cliente"]).CLI_ID;
+            bool respuesta = false;
+            string mensaje = string.Empty;
+
+            respuesta = new CN_Carrito().EliminarCarrito(idcliente, idproducto);
+            return Json(new { respuesta = respuesta, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult ObtenerDepartamento()
+        {
+            List<Departamento> oLista = new List<Departamento>();
+            // Usamos la misma Capa de Negocio que ya tienes configurada
+            oLista = new CN_Ubicacion().ObtenerDepartamento();
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult ObtenerProvincia(string IdDepartamento)
+        {
+            List<Provincia> oLista = new List<Provincia>();
+            oLista = new CN_Ubicacion().ObtenerProvincia(IdDepartamento);
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult ObtenerDistrito(string IdDepartamento, string IdProvincia)
+        {
+            List<Distrito> oLista = new List<Distrito>();
+            oLista = new CN_Ubicacion().ObtenerDistrito(IdDepartamento, IdProvincia);
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+        [HttpPost]
         public JsonResult GuardarComentario(string contenido, int puntuacion, int idproducto)
         {
-            bool resultado = false;
-            string mensaje = string.Empty;
             if (Session["Cliente"] == null) return Json(new { resultado = false, mensaje = "Debes iniciar sesión" });
 
             Cliente oCliente = (Cliente)Session["Cliente"];
@@ -179,13 +205,48 @@ namespace CapaPresentacionTienda.Controllers
                 COM_PUNTUACION = puntuacion,
                 COM_CONTENIDO = contenido
             };
-            resultado = new CN_Comentario().Registrar(oComentario, out mensaje);
+            string mensaje;
+            bool resultado = new CN_Comentario().Registrar(oComentario, out mensaje);
             return Json(new { resultado = resultado, mensaje = mensaje });
         }
 
-        public ActionResult Carrito()
+        // ============================================
+        // 6. HELPER DE IMÁGENES (Lógica Robusta)
+        // ============================================
+        private string ConvertirImagenABase64(string rutaBD, string nombreImagen)
         {
-            return View();
+            string base64String = null;
+            string rutaFinal = "";
+
+            try
+            {
+                // 1. Intento A: Usar la ruta completa que viene de la BD (si existe)
+                // Ej: "D:\Universidad\...\Images_Producto" + "\imagen.jpg"
+                if (!string.IsNullOrEmpty(rutaBD))
+                {
+                    rutaFinal = Path.Combine(rutaBD, nombreImagen);
+                }
+
+                // 2. Intento B: Si la ruta de BD no sirve, calcularla manualmente relativo al proyecto
+                if (string.IsNullOrEmpty(rutaFinal) || !System.IO.File.Exists(rutaFinal))
+                {
+                    string rutaTienda = Server.MapPath("~");
+                    string rutaSolucion = Directory.GetParent(rutaTienda).FullName;
+                    rutaFinal = Path.Combine(rutaSolucion, "Images_Producto", nombreImagen);
+                }
+
+                // 3. Leer y convertir
+                if (System.IO.File.Exists(rutaFinal))
+                {
+                    byte[] bytes = System.IO.File.ReadAllBytes(rutaFinal);
+                    base64String = Convert.ToBase64String(bytes);
+                }
+            }
+            catch
+            {
+                base64String = null;
+            }
+            return base64String;
         }
     }
 }

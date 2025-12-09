@@ -53,13 +53,15 @@ namespace CapaDatos
                 using (SqlConnection conex = new SqlConnection(Conexion.cn))
                 {
                     SqlCommand cmd = new SqlCommand("SP_OPERACIONCARRITO", conex);
+                    cmd.CommandType = CommandType.StoredProcedure; // Mover esto arriba por orden
 
                     cmd.Parameters.AddWithValue("@IDCLIENTE", idcliente);
                     cmd.Parameters.AddWithValue("@IDPRODUCTO", idproducto);
-                    cmd.Parameters.AddWithValue("@SUMAR", sumar);
-                    cmd.Parameters.AddWithValue("@RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;// significa que esta variable se llenara en la BD, no es parametro de entrada
+                    cmd.Parameters.AddWithValue("@SUMAR", sumar); // <--- ESTO ESTÁ BIEN
+
+                    // CORRECCIÓN IMPORTANTE AQUÍ ABAJO (Usar .Add, no .AddWithValue):
+                    cmd.Parameters.Add("@RESULTADO", SqlDbType.Bit).Direction = ParameterDirection.Output;
                     cmd.Parameters.Add("@MENSAJE", SqlDbType.VarChar, 500).Direction = ParameterDirection.Output;
-                    cmd.CommandType = CommandType.StoredProcedure;
 
                     conex.Open();
                     cmd.ExecuteNonQuery();

@@ -50,5 +50,30 @@ namespace CapaDatos
             return respuesta;
         }
 
+        public bool VerificarCompra(int idCliente, int idProducto)
+        {
+            bool comprado = false;
+            try
+            {
+                using (SqlConnection oconexion = new SqlConnection(Conexion.cn))
+                {
+                    SqlCommand cmd = new SqlCommand("sp_VerificarCompra", oconexion);
+                    cmd.Parameters.AddWithValue("@IdCliente", idCliente);
+                    cmd.Parameters.AddWithValue("@IdProducto", idProducto);
+                    cmd.Parameters.Add("@Comprado", SqlDbType.Bit).Direction = ParameterDirection.Output;
+                    cmd.CommandType = CommandType.StoredProcedure;
+
+                    oconexion.Open();
+                    cmd.ExecuteNonQuery();
+
+                    comprado = Convert.ToBoolean(cmd.Parameters["Comprado"].Value);
+                }
+            }
+            catch { 
+                comprado = false; 
+            }
+            return comprado;
+        }
+
     }
 }

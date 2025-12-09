@@ -1,5 +1,3 @@
-D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.csproj.AssemblyReference.cache
-D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.csproj.CoreCompileInputs.cache
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\CapaPresentacionTienda.dll.config
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\CapaPresentacionTienda.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\CapaPresentacionTienda.pdb
@@ -69,6 +67,8 @@ D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\es\System.Web.WebPages.Deployment.resources.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\es\System.Web.WebPages.Razor.resources.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\bin\es\System.Web.Optimization.resources.dll
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.csproj.AssemblyReference.cache
+D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.csproj.CoreCompileInputs.cache
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.csproj.CopyComplete
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.dll
 D:\Universidad\Semestre 6\Aplicaciones Web Avanzadas\CapaPresentacionTienda\obj\Debug\CapaPresentacionTienda.pdb

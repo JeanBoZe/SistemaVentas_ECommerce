@@ -19,6 +19,9 @@ namespace CapaNegocio
             return obj_CapaDato.Registrar(obj, DetalleVenta, out mensaje);
         }
 
-
+        public bool VerificarCompra(int idCliente, int idProducto)
+        {
+            return new CD_Venta().VerificarCompra(idCliente, idProducto);
+        }
     }
 }

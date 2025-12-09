@@ -222,7 +222,14 @@
                     {
                         $("<div>").addClass("col mb-5").append(
                             $("<div>").addClass("card h-100").append(
-                                $("<img>").addClass("card-img-top").attr({ "src": "data:image/" + element.Extension + ";base64," + element.Base64 }),
+                                $("<img>").addClass("card-img-top")
+                                    .attr({ "src": "data:image/" + element.Extension + ";base64," + element.Base64 })
+                                    .css({
+                                        "height": "250px",       // 1. Altura fija para que todas las tarjetas sean iguales
+                                        "width": "100%",         // 2. Ancho completo
+                                        "object-fit": "contain", // 3. ¡LA MAGIA! Evita que se deforme/estire
+                                        "padding": "10px"        // 4. Un poco de aire para que no toque los bordes
+                                    }),
                                 $("<div>").addClass("card-body p-4").append(
                                     $("<div>").addClass("text-center").append(
                                         $("<h5>").addClass("fw-bolder").text(element.PROD_NOMBRE),

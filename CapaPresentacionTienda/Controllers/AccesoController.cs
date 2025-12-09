@@ -3,16 +3,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
+
 using CapaEntidad;
 using CapaNegocio;
-using System.Web.Security;
 
 namespace CapaPresentacionTienda.Controllers
 {
     public class AccesoController : Controller
     {
-
-        // GET: Acceso
+        // ============================================
+        // 1. VISTAS (GET)
+        // ============================================
         public ActionResult Index()
         {
             return View();
@@ -33,16 +35,21 @@ namespace CapaPresentacionTienda.Controllers
             return View();
         }
 
-
+        // ============================================
+        // 2. LOGIN HÍBRIDO (CLIENTE O ADMIN)
+        // ============================================
         [HttpPost]
         public ActionResult Index(string correo, string clave)
         {
-            // 🔍 Verificar CLIENTE
-            Cliente oCliente = new CN_Cliente().Listar()
-                .FirstOrDefault(item => item.CLI_CORREO == correo && item.CLI_CLAVE == CN_Recursos.Encriptar(clave));
+            Cliente oCliente = null;
+            Usuario oUsuario = null; // Variable para el admin
+
+            // A. Intentamos buscar en la tabla CLIENTES
+            oCliente = new CN_Cliente().Listar().Where(item => item.CLI_CORREO == correo && item.CLI_CLAVE == CN_Recursos.Encriptar(clave)).FirstOrDefault();
 
             if (oCliente != null)
             {
+                // -- ES CLIENTE --
                 if (oCliente.CLI_RESTABLECER)
                 {
                     TempData["IdCliente"] = oCliente.CLI_ID;
@@ -54,47 +61,76 @@ namespace CapaPresentacionTienda.Controllers
                 ViewBag.Error = null;
                 return RedirectToAction("Index", "Tienda");
             }
-
-            // 🔍 Verificar USUARIO (admin)
-            Usuario oUsuario = new CN_Usuarios().Listar()
-                .FirstOrDefault(u => u.USU_CORREO == correo && u.USU_CLAVE == CN_Recursos.Encriptar(clave));
-
-            if (oUsuario != null)
+            else
             {
-                if (oUsuario.USU_RESTABLECER)
+                // B. Si no es cliente, intentamos buscar en la tabla USUARIOS (ADMIN)
+                oUsuario = new CN_Usuarios().Listar().Where(item => item.USU_CORREO == correo && item.USU_CLAVE == CN_Recursos.Encriptar(clave)).FirstOrDefault();
+
+                if (oUsuario != null)
                 {
-                    TempData["IdUsuario"] = oUsuario.USU_ID;
-                    return RedirectToAction("CambiarClave", "Acceso");
+                    // -- ES ADMINISTRADOR --
+                    // Aquí no creamos sesión de Tienda, sino que redirigimos al PROYECTO ADMIN.
+                    // ¡IMPORTANTE! Verifica que este puerto coincida con tu proyecto Admin.
+                    return Redirect("https://localhost:44327/Home/Index");
                 }
-
-                FormsAuthentication.SetAuthCookie(oUsuario.USU_CORREO, false);
-                Session["Usuario"] = oUsuario;
-
-                // 🔁 Redirige al proyecto Admin (cambia el puerto si es necesario)
-                return Redirect("https://localhost:44327/");
+                else
+                {
+                    // C. NO EXISTE EN NINGUNO
+                    ViewBag.Error = "Correo o contraseña no son correctos";
+                    return View();
+                }
             }
-
-            // ❌ Si no existe en ninguna tabla
-            ViewBag.Error = "Correo o contraseña no correcta";
-            return View();
         }
 
+        // ============================================
+        // 3. REGISTRO DE CLIENTES
+        // ============================================
+        [HttpPost]
+        public ActionResult Registrar(Cliente oCliente)
+        {
+            // Validamos contraseña de confirmación
+            if (oCliente.CLI_CLAVE != oCliente.ConfirmarClave)
+            {
+                ViewBag.Error = "Las contraseñas no coinciden";
+                return View(oCliente);
+            }
 
+            string mensaje = string.Empty;
+
+            // Encriptamos antes de enviar a la BD
+            oCliente.CLI_CLAVE = CN_Recursos.Encriptar(oCliente.CLI_CLAVE);
+
+            // Registramos
+            int resultado = new CN_Cliente().Registrar(oCliente, out mensaje);
+
+            if (resultado > 0)
+            {
+                ViewBag.Error = null;
+                return RedirectToAction("Index", "Acceso");
+            }
+            else
+            {
+                ViewBag.Error = mensaje;
+                return View(oCliente);
+            }
+        }
+
+        // ============================================
+        // 4. RESTABLECER Y CAMBIAR CLAVE
+        // ============================================
         [HttpPost]
         public ActionResult Reestablecer(string correo)
         {
-            Cliente ocliente = new Cliente();
+            Cliente oCliente = new CN_Cliente().Listar().Where(item => item.CLI_CORREO == correo).FirstOrDefault();
 
-            ocliente = new CN_Cliente().Listar().Where(item => item.CLI_CORREO == correo).FirstOrDefault();
-
-            if (ocliente == null)
+            if (oCliente == null)
             {
-                ViewBag.Error = "No se encontro un usuario relacionado a ese correo";
+                ViewBag.Error = "No se encontró un cliente con ese correo";
                 return View();
             }
 
             string mensaje = string.Empty;
-            bool respuesta = new CN_Cliente().ReestablecerClave(ocliente.CLI_ID, correo, out mensaje);
+            bool respuesta = new CN_Cliente().ReestablecerClave(oCliente.CLI_ID, correo, out mensaje);
 
             if (respuesta)
             {
@@ -111,33 +147,25 @@ namespace CapaPresentacionTienda.Controllers
         [HttpPost]
         public ActionResult CambiarClave(string idcliente, string claveactual, string nuevaclave, string confirmarclave)
         {
-            Cliente oCliente = new Cliente();
+            int id = int.Parse(idcliente);
+            string mensaje = string.Empty;
 
-            oCliente = new CN_Cliente().Listar().Where(u => u.CLI_ID == int.Parse(idcliente)).FirstOrDefault();
+            Cliente oCliente = new CN_Cliente().Listar().Where(c => c.CLI_ID == id).FirstOrDefault();
 
             if (oCliente.CLI_CLAVE != CN_Recursos.Encriptar(claveactual))
             {
                 TempData["IdCliente"] = idcliente;
-                ViewData["vClave"] = "";
-
                 ViewBag.Error = "La contraseña actual no es correcta";
                 return View();
             }
             else if (nuevaclave != confirmarclave)
             {
                 TempData["IdCliente"] = idcliente;
-                ViewData["vClave"] = claveactual;
-
-                ViewBag.Error = "Las contrseñas no coinciden";
+                ViewBag.Error = "Las contraseñas no coinciden";
                 return View();
             }
 
-            ViewData["vClave"] = "";
-
-            nuevaclave = CN_Recursos.Encriptar(nuevaclave);
-
-            string mensaje = string.Empty;
-            bool respuesta = new CN_Cliente().CambiarClave(int.Parse(idcliente), nuevaclave, out mensaje);
+            bool respuesta = new CN_Cliente().CambiarClave(id, CN_Recursos.Encriptar(nuevaclave), out mensaje);
 
             if (respuesta)
             {
@@ -149,7 +177,6 @@ namespace CapaPresentacionTienda.Controllers
                 ViewBag.Error = mensaje;
                 return View();
             }
-
         }
 
         public ActionResult CerrarSesion()
@@ -157,6 +184,27 @@ namespace CapaPresentacionTienda.Controllers
             Session["Cliente"] = null;
             FormsAuthentication.SignOut();
             return RedirectToAction("Index", "Acceso");
+        }
+
+        public JsonResult ObtenerDepartamento()
+        {
+            List<Departamento> oLista = new List<Departamento>();
+            oLista = new CN_Ubicacion().ObtenerDepartamento();
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        public JsonResult ObtenerProvincia(string IdDepartamento)
+        {
+            List<Provincia> oLista = new List<Provincia>();
+            oLista = new CN_Ubicacion().ObtenerProvincia(IdDepartamento);
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        public JsonResult ObtenerDistrito(string IdDepartamento, string IdProvincia)
+        {
+            List<Distrito> oLista = new List<Distrito>();
+            oLista = new CN_Ubicacion().ObtenerDistrito(IdDepartamento, IdProvincia);
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
         }
     }
 }

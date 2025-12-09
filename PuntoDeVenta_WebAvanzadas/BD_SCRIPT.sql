@@ -860,7 +860,7 @@ CREATE PROCEDURE sp_RegistrarComentario
     @IdProducto INT,
     @IdCliente INT,
     @Puntuacion INT,
-    @Contenido VARCHAR(500),
+    @Contenido VARCHAR(700),
     @Resultado BIT OUTPUT,
     @Mensaje VARCHAR(500) OUTPUT
 )
@@ -894,6 +894,28 @@ BEGIN
     INNER JOIN CLIENTE cl ON c.COM_CLI_ID = cl.CLI_ID
     WHERE c.COM_PROD_ID = @IdProducto
     ORDER BY c.COM_FECHAREGISTRO DESC
+END
+GO
+
+CREATE PROCEDURE sp_VerificarCompra
+(
+    @IdCliente INT,
+    @IdProducto INT,
+    @Comprado BIT OUTPUT
+)
+AS
+BEGIN
+    SET @Comprado = 0
+    
+    IF EXISTS(
+        SELECT 1 
+        FROM DETALLE_VENTA dv
+        INNER JOIN VENTA v ON v.VEN_ID = dv.DETV_VEN_ID
+        WHERE v.VEN_CLI_ID = @IdCliente AND dv.DETV_PROD_ID = @IdProducto
+    )
+    BEGIN
+        SET @Comprado = 1
+    END
 END
 GO
 --===========================COMENTARIOS==================================================================================
