@@ -920,4 +920,14 @@ END
 GO
 --===========================COMENTARIOS==================================================================================
 
-
+CREATE TABLE CUPON (
+    IdCupon INT PRIMARY KEY IDENTITY(1,1),
+    Codigo VARCHAR(50) UNIQUE NOT NULL,
+    Valor DECIMAL(10,2) NOT NULL,
+    Tipo VARCHAR(20) NOT NULL,
+    Activo BIT DEFAULT 1,
+    FechaVencimiento DATETIME,
+    
+    -- Aquí va la restricción
+    CONSTRAINT CK_Cupon_Tipo CHECK (Tipo IN ('FIJO', 'PORCENTAJE'))
+);

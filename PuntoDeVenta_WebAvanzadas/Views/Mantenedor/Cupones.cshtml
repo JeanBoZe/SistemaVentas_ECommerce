@@ -1,0 +1,231 @@
+﻿@{
+    ViewBag.Title = "Cupones";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="card">
+    <div class="card-header">
+        <i class="fas fa-ticket-alt"></i> Lista de Cupones
+    </div>
+    <div class="card-body">
+        <button type="button" class="btn btn-success" onclick="abrirModal(null)">Crear Nuevo</button>
+        <hr />
+        <table id="tabla" class="table table-bordered" style="width:100%">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Tipo</th>
+                    <th>Valor</th>
+                    <th>Vencimiento</th>
+                    <th>Activo</th>
+                    <th></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="FormModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cupón</h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="txtId" value="0" />
+
+                <div class="form-group">
+                    <label>Código:</label>
+                    <input type="text" class="form-control" id="txtCodigo" />
+                </div>
+
+                <div class="form-group">
+                    <label>Tipo Descuento:</label>
+                    <select class="form-control" id="cboTipo">
+                        <option value="FIJO">Monto Fijo ($)</option>
+                        <option value="PORCENTAJE">Porcentaje (%)</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Valor:</label>
+                    <input type="number" class="form-control" id="txtValor" />
+                </div>
+
+                <div class="form-group">
+                    <label>Fecha Vencimiento:</label>
+                    <input type="date" class="form-control" id="txtFecha" />
+                </div>
+
+                <div class="form-group">
+                    <label>Activo:</label>
+                    <select class="form-control" id="cboActivo">
+                        <option value="1">Sí</option>
+                        <option value="0">No</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="Guardar()">Guardar</button>
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts{
+    <script>
+        var tabladata;
+        var filaSeleccionada;
+
+        $(document).ready(function () {
+
+            // 1. Inicializar DataTable
+            tabladata = $("#tabla").DataTable({
+                "ajax": {
+                    url: '@Url.Action("ListarCupones", "Mantenedor")',
+                    type: "GET",
+                    dataType: "json"
+                },
+                "columns": [
+                    { "data": "Codigo" },
+                    { "data": "Tipo" },
+                    { "data": "Valor" },
+                    {
+                        "data": "FechaVencimiento",
+                        "render": function (data) {
+                            if (data == null) return "";
+                            var fecha = new Date(parseInt(data.replace('/Date(', '')));
+                            return fecha.toLocaleDateString();
+                        }
+                    },
+                    {
+                        "data": "Activo",
+                        "render": function (valor) {
+                            if (valor) {
+                                return '<span class="badge badge-success">Si</span>';
+                            } else {
+                                return '<span class="badge badge-danger">No</span>';
+                            }
+                        }
+                    },
+                    {
+                        "defaultContent": '<button type="button" class="btn btn-primary btn-sm btn-editar"><i class="fas fa-pen"></i></button>' +
+                                          '<button type="button" class="btn btn-danger btn-sm ms-2 btn-eliminar"><i class="fas fa-trash"></i></button>',
+                        "orderable": false,
+                        "searchable": false,
+                        "width": "90px"
+                    }
+                ]
+            });
+
+            // 2. Lógica para el botón EDITAR (Abrir modal con datos)
+            $("#tabla tbody").on("click", '.btn-editar', function () {
+                filaSeleccionada = $(this).closest("tr");
+                var data = tabladata.row(filaSeleccionada).data();
+
+                abrirModal(data);
+            });
+
+            // 3. Lógica para el botón ELIMINAR
+            $("#tabla tbody").on("click", '.btn-eliminar', function () {
+                var fila = $(this).closest("tr");
+                var data = tabladata.row(fila).data();
+
+                swal({
+                    title: "¿Está seguro?",
+                    text: "¿Desea eliminar el cupón?",
+                    type: "warning",
+                    showCancelButton: true,
+                    confirmButtonClass: "btn-danger",
+                    confirmButtonText: "Si, eliminar",
+                    cancelButtonText: "No",
+                    closeOnConfirm: false
+                },
+                function () {
+                    jQuery.ajax({
+                        url: '@Url.Action("EliminarCupon", "Mantenedor")',
+                        type: "POST",
+                        data: JSON.stringify({ id: data.IdCupon }),
+                        dataType: "json",
+                        contentType: "application/json; charset=utf-8",
+                        success: function (data) {
+                            if (data.resultado) {
+                                tabladata.row(fila).remove().draw();
+                                swal("Eliminado!", "El cupón ha sido eliminado.", "success");
+                            } else {
+                                swal("No se pudo eliminar", data.mensaje, "error");
+                            }
+                        },
+                        error: function (error) {
+                            console.log(error);
+                        }
+                    });
+                });
+            });
+
+        });
+
+        // 4. Función para abrir el modal (Crear o Editar)
+        function abrirModal(json) {
+            $("#txtId").val(0);
+            $("#txtCodigo").val("");
+            $("#cboTipo").val("FIJO");
+            $("#txtValor").val("");
+            $("#txtFecha").val("");
+            $("#cboActivo").val(1);
+
+            if (json != null) {
+                $("#txtId").val(json.IdCupon);
+                $("#txtCodigo").val(json.Codigo);
+                $("#cboTipo").val(json.Tipo);
+                $("#txtValor").val(json.Valor);
+                $("#cboActivo").val(json.Activo == true ? 1 : 0);
+
+                // Formatear fecha para el input type="date" (YYYY-MM-DD)
+                if(json.FechaVencimiento) {
+                     var fecha = new Date(parseInt(json.FechaVencimiento.replace('/Date(', '')));
+                     // Truco simple para formato YYYY-MM-DD
+                     var dia = ("0" + fecha.getDate()).slice(-2);
+                     var mes = ("0" + (fecha.getMonth() + 1)).slice(-2);
+                     var fechaFormato = fecha.getFullYear() + "-" + (mes) + "-" + (dia);
+                     $("#txtFecha").val(fechaFormato);
+                }
+            }
+
+            $("#FormModal").modal("show");
+        }
+
+        // 5. Función Guardar
+        function Guardar() {
+            var Cupon = {
+                IdCupon: $("#txtId").val(),
+                Codigo: $("#txtCodigo").val(),
+                Tipo: $("#cboTipo").val(),
+                Valor: $("#txtValor").val(),
+                Activo: $("#cboActivo").val() == 1 ? true : false,
+                FechaVencimiento: $("#txtFecha").val()
+            }
+
+            jQuery.ajax({
+                url: '@Url.Action("GuardarCupon", "Mantenedor")',
+                type: "POST",
+                data: JSON.stringify({ objeto: Cupon }),
+                dataType: "json",
+                contentType: "application/json; charset=utf-8",
+                success: function (data) {
+                    if (data.resultado != 0) {
+                        tabladata.ajax.reload();
+                        $("#FormModal").modal("hide");
+                    } else {
+                        // Usamos swal en lugar de alert simple si prefieres
+                        swal("Error", data.mensaje, "error");
+                    }
+                },
+                error: function (error) {
+                    alert("Ocurrió un error en la petición");
+                }
+            });
+        }
+    </script>
+}

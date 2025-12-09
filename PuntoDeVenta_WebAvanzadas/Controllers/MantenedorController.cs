@@ -236,5 +236,48 @@ namespace PuntoDeVenta_WebAvanzadas.Controllers
         }
 
         #endregion
+
+        #region cupon
+        public ActionResult Cupones()
+        {
+            return View();
+        }
+
+        [HttpGet]
+        public JsonResult ListarCupones()
+        {
+            List<Cupon> oLista = new CN_Cupon().Listar();
+            return Json(new { data = oLista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult GuardarCupon(Cupon objeto)
+        {
+            object resultado;
+            string mensaje = string.Empty;
+
+            if (objeto.IdCupon == 0)
+            {
+                resultado = new CN_Cupon().Registrar(objeto, out mensaje);
+            }
+            else
+            {
+                // Aquí iría la lógica de Editar si la implementas
+                resultado = 0;
+            }
+            return Json(new { resultado = resultado, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpPost]
+        public JsonResult EliminarCupon(int id)
+        {
+            bool respuesta = false;
+            string mensaje = string.Empty;
+
+            respuesta = new CN_Cupon().Eliminar(id, out mensaje);
+
+            return Json(new { resultado = respuesta, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
+        }
+        #endregion
     }
 }
